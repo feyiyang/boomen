@@ -1,0 +1,855 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>无标题文档</title>
+<style>
+*{margin:0;padding:0;}
+ul,li{list-style:none;}
+#div1{width:510px;height:330px;margin:0 auto;overflow:hidden;background:#069802;position:relative;}
+#box{width:990px;height:330px;position:absolute;z-index:5;}
+#stone{width:100%;overflow:hidden;}
+#stone li{width:26px;height:26px;background:#CCC;border:2px #666 solid;border-left-color:#FFF;border-top-color:#FFF;float:left;margin:30px 0 0 30px;}
+#booman{width:30px;height:30px;background:#069802 url(images/boyt00.gif) no-repeat center;position:absolute;left:0;top:0;z-index:9;}
+.tshow{width:140px;height:30px;line-height:30px;background:#999;color:#fff;position:absolute;left:32%;top:330px;text-align:center;}
+.score{width:100px;height:30px;line-height:30px;background:#999;color:#fff;position:absolute;left:44%;top:330px;text-align:center;}
+
+.wall{position:absolute;left:0;top:0;width:30px;height:30px;background:#F96 url(img/wall.jpg) center;z-index:2;}
+.e1{position:absolute;left:0;top:0;width:30px;height:30px;background-image:url(images/e1b00.gif);z-index:11;}
+.e2{position:absolute;left:0;top:0;width:30px;height:30px;background-image:url(images/e2b00.gif);z-index:11;}
+.newboom{width:30px;height:30px;background:url(img/boom00.gif) no-repeat center;position:absolute;z-index:1;}
+.booms{width:26px;height:26px;background:;position:absolute;left:0;top:0;z-index:0;border-radius:3px;}
+.door,.rangeadd,.addNum{width:30px;height:30px;position:absolute;background:#333;z-index:0;}
+.rangeadd{background:url(img/enhance_09.gif) no-repeat center;}
+.door{background:url(images/door_03.gif) no-repeat center;}
+.addNum{background:url(img/enhance_07.gif) no-repeat center;}
+
+.uperson{position:absolute;left:0;top:0;width:100%;height:100%;background:#333;z-index:9;text-align:center;line-height:300px;color:#fff;}
+.uperson input{margin:0 10px;vertical-align:middle;}
+</style>
+<script>
+window.onload = function(){
+	var box = document.getElementById('box');
+	var aInp = document.getElementsByTagName('input');
+	var timer = null;
+	var player = '';
+	
+	for(var i=0;i<aInp.length;i++){
+		aInp[i].onclick = function(){
+			player = this.value;
+			Game.init('box',player);
+			this.parentNode.style.display = 'none';
+		}
+	}
+}
+var Game = {
+	enemy:{  //敌人的数据
+		e1:{speed:2,score:100},  //speed：移动速度；
+		e2:{speed:3,score:200}
+	},
+	booman:{  //炸弹人的数据
+		speed:3,bommNum:1,boomRange:2
+	},
+	init: function(id,player){
+		this.obj = document.getElementById(id);
+		this.player = player;
+		this.uscroe = 0;
+		this.creatStone();
+		this.creatMen();
+		this.eMap(0);
+		this.playerdata();
+	},
+	gk:[
+		{
+			door:1,
+			addrange:1,
+			boomnum:0,
+			e1Num:7,
+			e2Num:0
+		},
+		{
+			door:1,
+			addrange:1,
+			boomnum:1,
+			e1Num:7,
+			e2Num:5
+		}
+	],
+	playerdata: function(){
+		var This = this;
+		this.timeshort = null;
+		var t = 200;
+		var tshow = document.createElement('div');
+		tshow.innerHTML = '时间剩余:'+t;
+		tshow.className = 'tshow';
+		document.body.appendChild(tshow)
+		this.timesort = setInterval(function(){
+			t--;
+			tshow.innerHTML = '时间剩余:'+t;
+			if(t==0){
+				This.manover();
+			}
+		},1000);
+		
+		var score = document.createElement('div');
+		score.innerHTML = 0;
+		score.className = 'score';
+		document.body.appendChild(score)
+		this.score = score;
+	},
+	creatStone: function (){  // 创建石头障碍物
+		var oUl = document.createElement('ul');
+		oUl.id = 'stone';
+		this.arr = [];
+		for(var i=0;i<80;i++){
+			var oLi = document.createElement('li');
+			oUl.appendChild(oLi);
+		}
+		this.obj.appendChild(oUl);
+		this.aLi = oUl.getElementsByTagName('li');
+		
+		for(var i=0;i<this.aLi.length;i++){
+			this.arr.push([this.aLi[i].offsetLeft,this.aLi[i].offsetTop])
+		}
+		
+		for(var i=0;i<this.aLi.length;i++){
+			this.aLi[i].style.position = 'absolute';
+			this.aLi[i].style.left = this.arr[i][0] + 'px';
+			this.aLi[i].style.top = this.arr[i][1] + 'px';
+			this.aLi[i].style.margin = '0';
+		}
+	},
+	eMap: function(num){  //创建地图 及敌人
+		this.enhance = [];  //威力增强位置
+		this.boommap = [];
+		var arr = [];
+		var arrE1 = [];
+		var gk = this.gk[num];
+		for(var i=0;i<11;i++){  //可放置墙体障碍点
+			if(i%2 == 0){
+				for(var j=0;j<33;j++){
+					arr.push([30*i,30*j]);
+					this.boommap.push([30*i,30*j])
+				}
+			}else{
+				for(var j=0;j<33;j++){
+					if(j%2 == 0){
+						arr.push([30*i,30*j]);
+						this.boommap.push([30*i,30*j])
+					}
+				}
+			}
+		}
+		arr.shift();
+		arr.shift();
+		arr.splice(31,1);
+		
+		var rArr = getRadom(77,arr.length-1);  //放置墙体障碍物
+		for(var i=0;i<77;i++){
+			this.enhance.push(arr[rArr[i]]);
+			var wall = document.createElement('span');
+			wall.className = 'wall';
+			wall.style.top = arr[rArr[i]][0] + 'px';
+			wall.style.left = arr[rArr[i]][1] + 'px';
+			
+			arr[rArr[i]] = '';
+			box.appendChild(wall);
+		}
+		this.aWall = getByClass(box,'span','wall');
+		
+		function delArr(){
+			for(var i=0;i<arr.length;i++){  //计算敌人可放置点
+				if(arr[i]==''){
+					arr.splice(i,1);
+					return delArr();
+				}
+			}
+		};
+		delArr();
+		arr.splice(0,7);arr.splice(30,3);arr.splice(58,3);arr.splice(76,3);arr.splice(115,2);
+		var eArr = getRadom(13,arr.length-1);  // 放置敌人
+		
+		for(var i=0;i<gk.e1Num;i++){
+			var e1 = document.createElement('span');
+			e1.className = 'e1';
+			e1.style.top = arr[eArr[i]][0] + 'px';
+			e1.style.left = arr[eArr[i]][1] + 'px';
+			box.appendChild(e1);
+		}
+		for(var i=0;i<gk.e2Num;i++){
+			var e2 = document.createElement('span');
+			e2.className = 'e2';
+			e2.style.top = arr[eArr[i+gk.e1Num]][0] + 'px';
+			e2.style.left = arr[eArr[i+gk.e1Num]][1] + 'px';
+			box.appendChild(e2);
+		}
+		this.e1 =  getByClass(box,'span','e1');
+		this.e2 =  getByClass(box,'span','e2');
+		
+		this.enemyMove(this.e1,this.enemy.e1.speed,'e1');
+		this.e2.length>0 && this.enemyMove(this.e2,this.enemy.e2.speed,'e2');
+		
+		var dArr = getRadom(6,this.enhance.length);
+		var door = document.createElement('span');  //创建下一关的门
+		door.className = 'door';
+		door.style.left = this.enhance[dArr[0]][1] + 'px';
+		door.style.top = this.enhance[dArr[0]][0] + 'px';
+		this.obj.appendChild(door);
+		this.door = door;
+		
+		var rangeadd = document.createElement('span');//创建范围增强
+		rangeadd.className = 'rangeadd';
+		rangeadd.style.left = this.enhance[dArr[1]][1] + 'px';
+		rangeadd.style.top = this.enhance[dArr[1]][0] + 'px';
+		this.obj.appendChild(rangeadd);
+		this.rangeadd = rangeadd;
+		
+		if(gk.boomnum>0){
+			var addNum = document.createElement('span');//创建个数增加
+			addNum.className = 'addNum';
+			addNum.style.left = this.enhance[dArr[2]][1] + 'px';
+			addNum.style.top = this.enhance[dArr[2]][0] + 'px';
+			this.obj.appendChild(addNum);
+			this.addNum = addNum;
+		}
+	},
+	creatMen: function(){	//创建炸弹人
+		this.man = document.createElement('div');
+		this.man.style.background = 'url(images/'+this.player+'b00.gif) no-repeat center';
+		this.man.id = 'booman';
+		this.obj.appendChild(this.man);
+		
+		this.movemen();
+	},
+	movemen: function(){  //操作炸弹人
+		this.start = true;
+		var This = this;
+		this.keymaps = [];
+		
+		document.onkeydown = function(ev){
+			var ev = ev || event;
+			This.keymaps[ev.keyCode] = true;
+		};
+		document.onkeyup = function(ev){
+			var ev = ev || window.event;
+			This.keymaps[ev.keyCode] = false;
+		}
+		this.movefn(this.man,this.booman.speed);
+	},
+	movefn: function(obj,dir){  //炸弹人的移动
+		var speed = dir;
+		var num = 0;
+		var This = this;
+		var onboom = true;
+		var n = 0;
+		
+		obj.timer = setInterval(function(){
+			var L1 = obj.offsetLeft;
+			var R1 = obj.offsetLeft+ obj.offsetWidth;
+			var T1 = obj.offsetTop;
+			var B1 = obj.offsetTop + obj.offsetHeight;
+			if( This.keymaps[65] ) {  //向左移动
+				obj.style.left = obj.offsetLeft - speed + 'px';
+				for(var i=0;i<This.aLi.length;i++){
+					if(pz(obj,This.aLi[i])){  // 遇到石体
+						var R2 = This.aLi[i].offsetLeft + This.aLi[i].offsetWidth;
+						var T2 = This.aLi[i].offsetTop;
+						var B2 = This.aLi[i].offsetTop + This.aLi[i].offsetHeight;
+						
+						if( T1<B2 && (B2-13)<T1){  //自动上下移
+							obj.style.top = obj.offsetTop + (B2-T1) + 'px';
+						}else if( B1>T2 && T2+13>B1 ){
+							obj.style.top = obj.offsetTop - (B1-T2) + 'px';
+						}
+						obj.style.left = obj.offsetLeft + speed + 'px';
+						break;
+					}
+				}
+				for(var i=0;i<This.aWall.length;i++){
+					if(pz(obj,This.aWall[i])){  // 遇到墙体
+						obj.style.left = obj.offsetLeft + speed + 'px';
+					}
+				}
+				if(!onboom&&pz(obj,This.newboom)){
+					obj.style.left = obj.offsetLeft + speed + 'px';
+				}
+				// 移动动画
+				if(n>12){
+					n=0
+				}
+				obj.style.background = 'url(images/'+This.player+'l0'+Math.ceil(n/4)+'.gif) no-repeat center';
+				n++;
+				if(obj.offsetLeft>250&&obj.offsetLeft<(This.obj.offsetWidth-260)){
+					This.obj.style.left = 250-obj.offsetLeft+'px';
+				}
+			}
+			if(Game.keymaps[87] ) {  //向上移动
+				var T1 = obj.offsetTop;
+				var L1 = obj.offsetLeft;
+				var R1 = obj.offsetLeft + obj.offsetWidth;
+				obj.style.top = obj.offsetTop - speed + 'px';
+				for(var i=0;i<This.aLi.length;i++){  //遇到石体
+					if(pz(obj,This.aLi[i])){
+						n = i;
+						var B2 = This.aLi[i].offsetTop + This.aLi[i].offsetHeight;
+						var L2 = This.aLi[i].offsetLeft;
+						var R2 = This.aLi[i].offsetLeft + This.aLi[i].offsetWidth;
+						
+						if( L1<R2 && (R2-13)<L1){  //自动左右移
+							obj.style.left = obj.offsetLeft + (R2-L1) + 'px';
+						}else if( R1>L2 && L2+13>R1 ){
+							obj.style.left = obj.offsetLeft - (R1-L2) + 'px';
+						}
+						obj.style.top = obj.offsetTop + speed + 'px';
+					}
+				}
+				for(var i=0;i<This.aWall.length;i++){  //遇到墙体
+					if(pz(obj,This.aWall[i])){
+						obj.style.top = obj.offsetTop + speed + 'px';
+					}
+				}
+				if(!onboom&&pz(obj,This.newboom)){
+					obj.style.top = obj.offsetTop + speed + 'px';
+				}
+				//移动动画
+				if(n>12){
+					n=0
+				}
+				obj.style.background = 'url(images/'+This.player+'t0'+Math.ceil(n/4)+'.gif) no-repeat center';
+				n++;
+			}
+			if(This.keymaps[68] ) {  //向右移动
+				var R1 = obj.offsetLeft + obj.offsetWidth;
+				var T1 = obj.offsetTop;
+				var B1 = obj.offsetTop + obj.offsetHeight;
+				obj.style.left = obj.offsetLeft + speed + 'px';
+				for(var i=0;i<This.aLi.length;i++){  //遇到石体
+					if(pz(obj,This.aLi[i])){
+						n = i;
+						var L2 = This.aLi[i].offsetLeft;
+						var T2 = This.aLi[i].offsetTop;
+						var B2 = This.aLi[i].offsetTop + This.aLi[i].offsetHeight;
+						
+						if( T1<B2 && (B2-13)<T1){  //自动上下移
+							obj.style.top = obj.offsetTop + (B2-T1) + 'px';
+						}else if( B1>T2 && T2+13>B1 ){
+							obj.style.top = obj.offsetTop - (B1-T2) + 'px';
+						}
+						obj.style.left = obj.offsetLeft - speed + 'px';
+					}
+				}
+				for(var i=0;i<This.aWall.length;i++){  //遇到墙体
+					if(pz(obj,This.aWall[i])){
+						obj.style.left = obj.offsetLeft - speed + 'px';
+					}
+				}
+				if(!onboom&&pz(obj,This.newboom)){
+					obj.style.left = obj.offsetLeft - speed + 'px';
+				}
+				//移动动画
+				if(n>12){
+					n=0
+				}
+				obj.style.background = 'url(images/'+This.player+'r0'+Math.ceil(n/4)+'.gif) no-repeat center';
+				n++;
+				if(obj.offsetLeft>250&&obj.offsetLeft<(This.obj.offsetWidth-260) ){
+					This.obj.style.left = 250-obj.offsetLeft+'px';
+				}
+			}
+			
+			if(This.keymaps[83] ) {  //向下移动
+				var B1 = obj.offsetTop + obj.offsetHeight;
+				var L1 = obj.offsetLeft;
+				var R1 = obj.offsetLeft + obj.offsetWidth;
+				obj.style.top = obj.offsetTop + speed + 'px';
+				for(var i=0;i<This.aLi.length;i++){  //碰撞到物体
+					if(pz(obj,This.aLi[i])){
+						n = i;
+						var T2 = This.aLi[i].offsetTop;
+						var L2 = This.aLi[i].offsetLeft;
+						var R2 = This.aLi[i].offsetLeft + This.aLi[i].offsetWidth;
+						
+						if( L1<R2 && (R2-13)<L1){  //自动左右移
+							obj.style.left = obj.offsetLeft + (R2-L1) + 'px';
+						}else if( R1>L2 && L2+13>R1 ){
+							obj.style.left = obj.offsetLeft - (R1-L2) + 'px';
+						}
+						obj.style.top = obj.offsetTop - speed + 'px';
+					}
+				}
+				for(var i=0;i<This.aWall.length;i++){  //碰撞到墙体
+					if(pz(obj,This.aWall[i])){
+						obj.style.top = obj.offsetTop - speed + 'px';
+					}
+				}
+				if(!onboom&&pz(obj,This.newboom)){
+					obj.style.top = obj.offsetTop - speed + 'px';
+				}
+				//移动动画
+				if(n>12){
+					n=0
+				}
+				obj.style.background = 'url(images/'+This.player+'b0'+Math.ceil(n/4)+'.gif) no-repeat center';
+				n++;
+			}
+			if( obj.offsetLeft < 0 ){  //限制范围
+				obj.style.left = 0;
+				speed = 0;
+			}else if(obj.offsetTop<0){
+				obj.style.top = 0;
+				speed = 0;
+			}else if( obj.offsetLeft > obj.parentNode.offsetWidth - obj.offsetWidth ){
+				obj.style.left = obj.parentNode.offsetWidth-obj.offsetWidth + 'px';
+				speed = 0;
+			}else if( obj.offsetTop > obj.parentNode.offsetHeight - obj.offsetHeight ){
+				obj.style.top = obj.parentNode.offsetHeight - obj.offsetHeight + 'px';
+				speed = 0;
+			}else{
+				speed = dir;
+			}
+			if(This.keymaps[75] && num<This.booman.bommNum){  //搁置炸弹
+				var L = This.man.offsetLeft;
+				var T = This.man.offsetTop;
+				var newboom = document.createElement('span');
+			
+				for(var i=0;i<This.boommap.length;i++){
+					if((Math.abs(This.boommap[i][1]-L)<16)&&(Math.abs(This.boommap[i][0]-T)<16)){
+						L = This.boommap[i][1];
+						T = This.boommap[i][0];
+					}
+				}
+				newboom.className = 'newboom';
+				newboom.style.left = L + 'px';
+				newboom.style.top = T + 'px';
+				
+				This.obj.appendChild(newboom);
+				This.newboom = newboom;
+				num++;
+				This.booom(newboom,function(){
+					num--;
+				});
+				This.keymaps[75] = false;
+			}
+			if(!onboom&&(Game.man.offsetLeft!=This.newboom.offsetLeft)&&(Math.abs(Game.man.offsetLeft-This.newboom.offsetLeft)>30)){
+				onboom = false;
+			}else{
+				onboom=true;
+			};
+			
+			This.e1 = getByClass(This.obj,'span','e1');
+			if( (pz(obj,This.door)) && This.e1.length==0 ){
+				This.nextgk();
+			}
+			if(This.rangeadd&&pz(obj,This.rangeadd)){
+				This.rangeadd.style.display = 'none';
+				This.booman.boomRange++;
+			}
+			if(This.addNum&&pz(obj,This.addNum)){
+				This.addNum.style.display = 'none';
+				This.booman.bommNum++;
+			}
+		},32);
+	},
+	booom: function(obj,fn){
+		var This = this;
+		var n=0;
+		for(var i=0;i<4;i++){
+			var oSpan = document.createElement('span');
+			oSpan.className = 'booms';
+			oSpan.style.left = obj.offsetLeft + 'px';
+			oSpan.style.top = obj.offsetTop + 'px';
+			This.obj.appendChild(oSpan);
+		}
+		obj.booms = getByClass(Game.obj,'span','booms');
+		
+		obj.timer = setInterval(function(){
+			n++;
+			if(n>3){
+				n=0;
+			}
+			This.newboom.style.background = 'url(img/boom0'+n+'.gif) no-repeat center';
+		},500);
+		obj.outT1 = setTimeout(function(){
+			var n = This.booman.boomRange-2
+			obj.booms[0].style.background = 'url(images/booms_07.gif) no-repeat left center';
+			obj.booms[1].style.background = 'url(images/booms_03.gif) no-repeat center top';
+			obj.booms[2].style.background = 'url(images/booms_10.gif) no-repeat right center';
+			obj.booms[3].style.background = 'url(images/booms_14.gif) no-repeat center bottom';
+			obj.booms[4]&&(obj.booms[4].style.background = 'url(images/booms_07.gif) no-repeat left center');
+			obj.booms[5]&&(obj.booms[5].style.background = 'url(images/booms_03.gif) no-repeat center top');
+			obj.booms[6]&&(obj.booms[6].style.background = 'url(images/booms_10.gif) no-repeat right center');
+			obj.booms[7]&&(obj.booms[7].style.background = 'url(images/booms_14.gif) no-repeat center bottom');
+			function ranging(){
+				if(n>=0){
+					obj.booms[0]&&(obj.booms[0].style.width = 26*(This.booman.boomRange-n) + 'px');
+					obj.booms[0]&&(obj.booms[0].style.left = obj.offsetLeft - 26*(This.booman.boomRange-n-1) + 'px');
+					obj.booms[1]&&(obj.booms[1].style.height = 26*(This.booman.boomRange-n) + 'px');
+					obj.booms[1]&&(obj.booms[1].style.top = obj.offsetTop - 26*(This.booman.boomRange-n-1) + 'px');
+					obj.booms[2]&&(obj.booms[2].style.width = 26*(This.booman.boomRange-n) + 'px');
+					obj.booms[3]&&(obj.booms[3].style.height = 26*(This.booman.boomRange-n) + 'px');
+					
+					obj.booms[4]&&(obj.booms[4].style.width = 26*(This.booman.boomRange-n) + 'px');
+					obj.booms[4]&&(obj.booms[4].style.left = obj.offsetLeft - 26*(This.booman.boomRange-n-1) + 'px');
+					obj.booms[5]&&(obj.booms[5].style.height = 26*(This.booman.boomRange-n) + 'px');
+					obj.booms[5]&&(obj.booms[5].style.top = obj.offsetTop - 26*(This.booman.boomRange-n-1) + 'px');
+					obj.booms[6]&&(obj.booms[6].style.width = 26*(This.booman.boomRange-n) + 'px');
+					obj.booms[7]&&(obj.booms[7].style.height = 26*(This.booman.boomRange-n) + 'px');
+				
+					for(var i=0;i<obj.booms.length;i++){
+						for(var o=0;o<This.aLi.length;o++){
+							if(pz(obj.booms[i],This.aLi[o])){
+								obj.booms[i].style.display = 'none';
+							}
+						}
+						for(var j=0;j<This.aWall.length;j++){
+							if( pz(obj.booms[i],This.aWall[j]) ){
+								obj.booms[i].style.display = 'none';
+								This.aWall[j].style.display = 'none';
+							}
+						}
+						for(var k=0;k<This.e1.length;k++){
+							if( pz(obj.booms[i],This.e1[k]) ){
+								This.e1 = getByClass(This.obj,'span','e1');
+								This.obj.removeChild(This.e1[k]);
+								This.uscroe+=10;
+							}
+						}
+						for(var k=0;k<This.e2.length;k++){
+							if( pz(obj.booms[i],This.e2[k]) ){
+								This.e2 = getByClass(This.obj,'span','e2');
+								This.obj.removeChild(This.e2[k]);
+								This.uscroe+=20;
+							}
+						}
+						if(pz(obj.booms[i],This.man)){
+							This.manover();
+						}
+					}
+					n--;
+					return ranging();
+				}	
+			}
+			ranging();
+			obj.style.background = 'url(images/boomc_03.gif) center';
+			This.score.innerHTML = This.uscroe;
+		},2200);
+		obj.outT2 = setTimeout(function(){
+			This.e1 = getByClass(This.obj,'span','e1');
+			This.e2 = getByClass(This.obj,'span','e2');
+			obj.booms = getByClass(Game.obj,'span','booms');
+			clearInterval(obj.timer);
+			for(var i=0;i<4;i++){
+				for(var j=0;j<Game.aWall.length;j++){
+					if( pz(obj.booms[i],Game.aWall[j]) ){
+						obj.booms[i].style.display = 'none';
+					}
+				}
+				for(var k=0;k<This.e1.length;k++){
+					if( pz(obj.booms[i],This.e1[k]) ){
+						This.e1[k].style.display = 'none';
+						This.obj.removeChild(This.e1[k])
+					}
+				}
+				for(var k=0;k<This.e2.length;k++){
+					if( pz(obj.booms[i],This.e2[k]) ){
+						This.e2[k].style.display = 'none';
+						This.obj.removeChild(This.e2[k])
+					}
+				}
+				Game.obj.removeChild(obj.booms[i]);
+			}
+			Game.obj.removeChild(obj);
+			fn && fn();
+		},2600)
+	},
+	manover: function(){
+		this.man.style.display = 'none';
+		this.booman.life--;
+		alert('游戏失败！！！');
+		window.location.reload();
+	},
+	nextgk: function(){
+		this.obj.removeChild(this.man);
+		this.obj.style.left = '0';
+		clearInterval(this.man.timer);
+		clearInterval(this.dirtimer);
+		clearInterval(this.truetimer);
+		clearInterval(this.movetimer);
+		clearInterval(this.timesort);
+		var aWall = getByClass(this.obj,'span','wall');
+		for(var i=0;i<aWall.length;i++){
+			this.obj.removeChild(aWall[i]);
+		}
+		this.creatMen();
+		this.eMap(1);
+	},
+	enemyMove: function(eles,speed,bg){
+		this.dirtimer = null;
+		this.truetimer = null;
+		this.movetimer = null;
+		var dir = ['left','top'];
+		var n=0;
+		var mDir = 'r';
+		for(var i=0;i<eles.length;i++){
+			eles[i].speed = speed;
+			eles[i][dir] = dir[Math.round(Math.random()*1)];
+			eles[i].lMove = eles[i].rMove = eles[i].tMove = eles[i].bMove = true;
+		}
+		this.dirtimer = setInterval(function(){
+			for(var i=0;i<eles.length;i++){
+				eles[i][dir] = dir[Math.round(Math.random()*1)];
+				eles[i].lMove = eles[i].rMove = eles[i].tMove = eles[i].bMove = true;
+			}
+		},32*30);
+		this.truetimer = setInterval(function(){
+			for(var i=0;i<eles.length;i++){
+				eles[i].lMove = eles[i].rMove = eles[i].tMove = eles[i].bMove = true;
+			}
+		},640);
+		
+		this.movetimer = setInterval(function(){
+			for(var i=0;i<eles.length;i++){
+				var L1 = eles[i].offsetLeft;
+				var R1 = eles[i].offsetLeft + eles[i].offsetWidth;
+				var T1 = eles[i].offsetTop;
+				var B1 = eles[i].offsetTop + eles[i].offsetHeight;
+				eles[i].style.background = 'url(images/'+bg+'b0'+Math.ceil(n/4)+'.gif) no-repeat center';
+				n++;
+				if(n>12){
+					n=0;
+				}
+				if(Game.newboom&&pz(Game.newboom,eles[i])){
+					eles[i].speed *= -1;
+				}
+				if(pz(Game.man,eles[i])){
+					Game.manover();
+				}
+				
+				if(eles[i][dir] == 'left'){  //左右移动
+					eles[i].style.left = eles[i].offsetLeft+eles[i].speed+'px';
+					if(eles[i].offsetLeft<0){
+						eles[i].style.left = eles[i].offsetLeft-eles[i].speed+'px';
+						eles[i].speed *= -1;
+						eles[i].lMove = false;
+					}else if(eles[i].offsetLeft>Game.obj.offsetWidth-eles[i].offsetWidth){
+						eles[i].style.left = eles[i].offsetLeft-eles[i].speed+'px';
+						eles[i].speed *= -1;
+						eles[i].rMove = false;
+					}
+					for(var j=0;j<Game.aLi.length;j++){	
+						if( pz(eles[i],Game.aLi[j]) ){
+							eles[i].style.left = eles[i].offsetLeft-eles[i].speed+'px';
+							
+							var L2 = Game.aLi[j].offsetLeft;
+							var R2 = Game.aLi[j].offsetLeft + Game.aLi[j].offsetWidth;
+							var T2 = Game.aLi[j].offsetTop;
+							var B2 = Game.aLi[j].offsetTop + Game.aLi[j].offsetHeight;
+							
+							if(L1<=R2&&eles[i].speed<0){
+								if( T1<B2 && (B2-13)<T1){  //自动上下移
+									eles[i].style.top = eles[i].offsetTop + (B2-T1) + 'px';
+								}else if( B1>T2 && T2+13>B1 ){
+									eles[i].style.top = eles[i].offsetTop - (B1-T2) + 'px';
+								}else{
+									eles[i].lMove = false;
+								}
+							}else if(R1>=L2&&eles[i].speed>0){
+								if( T1<B2 && (B2-13)<T1){  //自动上下移
+									eles[i].style.top = eles[i].offsetTop + (B2-T1) + 'px';
+								}else if( B1>T2 && T2+13>B1 ){
+									eles[i].style.top = eles[i].offsetTop - (B1-T2) + 'px';
+								}else{
+									eles[i].rMove = false;
+								}
+							}
+							if( !eles[i].lMove && !eles[i].rMove ){
+								eles[i][dir] = 'top';
+							}
+							eles[i].speed *= -1;
+							break;
+						}
+					}
+					for(var j=0;j<Game.aWall.length;j++){
+						if( pz(eles[i],Game.aWall[j]) ){
+							eles[i].style.left = eles[i].offsetLeft-eles[i].speed+'px';
+							
+							var L2 = Game.aWall[j].offsetLeft;
+							var R2 = Game.aWall[j].offsetLeft + Game.aWall[j].offsetWidth;
+							var T2 = Game.aWall[j].offsetTop;
+							var B2 = Game.aWall[j].offsetTop + Game.aWall[j].offsetHeight;
+							
+							if(L1<=R2&&eles[i].speed<0){
+								if( T1<B2 && (B2-13)<T1){  //自动上下移
+									eles[i].style.top = eles[i].offsetTop + (B2-T1) + 'px';
+								}else if( B1>T2 && T2+13>B1 ){
+									eles[i].style.top = eles[i].offsetTop - (B1-T2) + 'px';
+								}else{
+									eles[i].lMove = false;
+								}
+							}else if(R1>=L2&&eles[i].speed>0){
+								if( T1<B2 && (B2-13)<T1){  //自动上下移
+									eles[i].style.top = eles[i].offsetTop + (B2-T1) + 'px';
+								}else if( B1>T2 && T2+13>B1 ){
+									eles[i].style.top = eles[i].offsetTop - (B1-T2) + 'px';
+								}else{
+									eles[i].rMove = false;
+								}
+							}
+							
+							if( !eles[i].lMove && !eles[i].rMove ){
+								eles[i][dir] = 'top';
+							}
+							eles[i].speed *= -1;
+							break;
+						}
+					}
+				}else{
+					eles[i].style.top = eles[i].offsetTop+eles[i].speed+'px';
+					if(eles[i].offsetTop<0){
+						eles[i].style.top = eles[i].offsetTop-eles[i].speed+'px';
+						eles[i].speed *= -1;
+						eles[i].tMove = false;
+					}else if(eles[i].offsetTop>Game.obj.offsetHeight-30){
+						eles[i].style.top = eles[i].offsetTop-eles[i].speed+'px';
+						eles[i].speed *= -1;
+						eles[i].bMove = false;
+					}
+					
+					for(var j=0;j<Game.aLi.length;j++){
+						if( pz(eles[i],Game.aLi[j]) ){
+							eles[i].style.top = eles[i].offsetTop-eles[i].speed+'px';
+							
+							var L2 = Game.aLi[j].offsetLeft;
+							var R2 = Game.aLi[j].offsetLeft + Game.aLi[j].offsetWidth;
+							var T2 = Game.aLi[j].offsetTop;
+							var B2 = Game.aLi[j].offsetTop + Game.aLi[j].offsetHeight;
+							
+							if(T1<=B2&&eles[i].speed<0){
+								if( L1<R2 && (R2-13)<L1){  //自动左右移
+									eles[i].style.left = eles[i].offsetLeft + (R2-L1) + 'px';
+								}else if( R1>L2 && L2+13>R1 ){
+									eles[i].style.left = eles[i].offsetLeft - (R1-L2) + 'px';
+								}else{
+									eles[i].tMove = false;
+								}
+							}else if(B1>=T2&&eles[i].speed>0){
+								if( L1<R2 && (R2-13)<L1){  //自动左右移
+									eles[i].style.left = eles[i].offsetLeft + (R2-L1) + 'px';
+								}else if( R1>L2 && L2+13>R1 ){
+									eles[i].style.left = eles[i].offsetLeft - (R1-L2) + 'px';
+								}else{
+									eles[i].bMove = false;
+								}
+							}
+							
+							if( !eles[i].tMove && !eles[i].bMove ){
+								eles[i][dir] = 'left';
+							}
+							eles[i].speed *= -1;
+							break;
+						}
+					}
+					for(var j=0;j<Game.aWall.length;j++){
+						if( pz(eles[i],Game.aWall[j]) ){
+							eles[i].style.top = eles[i].offsetTop-eles[i].speed+'px';
+							
+							var L2 = Game.aWall[j].offsetLeft;
+							var R2 = Game.aWall[j].offsetLeft + Game.aWall[j].offsetWidth;
+							var T2 = Game.aWall[j].offsetTop;
+							var B2 = Game.aWall[j].offsetTop + Game.aWall[j].offsetHeight;
+							
+							if(T1<=B2&&eles[i].speed<0){
+								if( L1<R2 && (R2-13)<L1){  //自动左右移
+									eles[i].style.left = eles[i].offsetLeft + (R2-L1) + 'px';
+								}else if( R1>L2 && L2+13>R1 ){
+									eles[i].style.left = eles[i].offsetLeft - (R1-L2) + 'px';
+								}else{
+									eles[i].tMove = false;
+								}
+							}else if(B1>=T2&&eles[i].speed>0){
+								if( L1<R2 && (R2-13)<L1){  //自动左右移
+									eles[i].style.left = eles[i].offsetLeft + (R2-L1) + 'px';
+								}else if( R1>L2 && L2+13>R1 ){
+									eles[i].style.left = eles[i].offsetLeft - (R1-L2) + 'px';
+								}else{
+									eles[i].bMove = false;
+								}
+								
+							}
+							if( !eles[i].tMove && !eles[i].bMove ){
+								eles[i][dir] = 'left';
+							}
+							eles[i].speed *= -1;
+							break;
+						}
+					}
+				}
+			}
+		},32);
+	}
+};
+
+function getRadom(n,range){  //获取n个随机的数字
+	var arr = [];
+	var json = {};
+	(function(){
+		while( arr.length<n ){
+			var iNum = Math.round( Math.random()*range);
+			if( !json[iNum] ){
+				json[iNum] = 1;
+				arr.push(iNum);
+			}
+		}
+		arr.sort( function(a,b){ return a-b } )
+	})();
+	return arr;
+};
+function pz(obj1,obj2){  //碰撞检测
+	var L1 = obj1.offsetLeft;
+	var R1 = obj1.offsetLeft + obj1.offsetWidth;
+	var T1 = obj1.offsetTop;
+	var B1 = obj1.offsetTop + obj1.offsetHeight;
+	
+	var L2 = obj2.offsetLeft;
+	var R2 = obj2.offsetLeft + obj2.offsetWidth;
+	var T2 = obj2.offsetTop;
+	var B2 = obj2.offsetTop + obj2.offsetHeight;
+	
+	if( L1>=R2 || R1<=L2 || T1>=B2 || B1<=T2 ){
+		return false;
+	}
+	else{
+		return true;
+	}
+};
+function getByClass(parent, tagName, className) {  //获取className的元素
+	var aEls = parent.getElementsByTagName(tagName);
+	var arr = [];
+	
+	var serchC = className.split(' ')
+	for (var i=0; i<aEls.length; i++) {
+		var aClass = aEls[i].className.split(' ');
+		for (var j=0; j<aClass.length; j++) {
+			for(var n=0;n<serchC.length;n++){
+				if (aClass[j] == serchC[n]) {
+					arr.push(aEls[i]);
+					break;
+				}
+			}
+		}
+	}
+	return arr;
+};
+function css(obj, attr){
+	return obj.currentStyle?obj.currentStyle[attr]:getComputedStyle(obj)[attr];
+};
+</script>
+</head>
+
+<body>
+<div id="div1">
+	<div id="box"></div>
+	<div class="uperson">请选择您的人物：<input type="image" src="images/boyb00.gif" value="boy" /><input type="image" src="images/girlb03.gif" value="girl" /></div>
+</div>
+</body>
+</html>
